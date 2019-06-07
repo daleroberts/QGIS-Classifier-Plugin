@@ -65,9 +65,6 @@
             <item row="1" column="1">
              <widget class="QgsMapLayerComboBox" name="uSourceLayer"/>
             </item>
-            <item row="3" column="1">
-             <widget class="QgsFieldExpressionWidget" name="uDataField" native="true"/>
-            </item>
            </layout>
           </item>
          </layout>
@@ -566,11 +563,6 @@
   </layout>
  </widget>
  <customwidgets>
-  <customwidget>
-   <class>QgsFieldExpressionWidget</class>
-   <extends>QWidget</extends>
-   <header>qgsfieldexpressionwidget.h</header>
-  </customwidget>
   <customwidget>
    <class>QgsMapLayerComboBox</class>
    <extends>QComboBox</extends>

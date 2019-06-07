@@ -307,7 +307,7 @@ class ClassifyGeneratorAlgorithm(QgsProcessingAlgorithm):
         return {self.PrmOutputLayer: dest_id}
 
     def icon(self):
-        return QIcon(":/plugins/Classify/Classify.png")
+        return QIcon(":/plugins/classify/classify.png")
 
     def name(self):
         return "generateClassifys"
