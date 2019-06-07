@@ -1,0 +1,292 @@
+#!/usr/bin/env python3
+"""
+An unsupervised water classification algorithm.
+
+Dale Roberts <dale.roberts@anu.edu.au>
+
+"""
+
+import numpy as np
+import argparse
+import warnings
+import joblib
+import gdal
+import sys
+
+from itertools import combinations
+from gdalnumeric import LoadFile as read, SaveArray as write
+from scipy import ndimage as ndi
+
+from skimage.filters import gabor_kernel
+from skimage.filters import threshold_otsu
+
+from sklearn.pipeline import Pipeline
+from sklearn.base import BaseEstimator, TransformerMixin
+from sklearn.mixture import GaussianMixture
+from sklearn.decomposition import PCA, FactorAnalysis
+
+
+class MaskedPCA(BaseEstimator, TransformerMixin):
+
+    def __init__(self, n_components=2, mask=None, **kwargs):
+        self.n_components = n_components
+        self.mask = mask
+        self.kwargs = kwargs
+
+    def fit(self, X):
+        self.pca = PCA(n_components=self.n_components, **self.kwargs)
+        mask = self.mask
+        mask = self.mask if self.mask is not None else slice(None)
+        self.pca.fit(X[:, mask])
+        return self
+
+    def transform(self, X):
+        mask = self.mask if self.mask is not None else slice(None)
+        pca_transformed = self.pca.transform(X[:, mask])
+        if self.mask is not None:
+            remaining_cols = X[:, ~mask]
+            return np.hstack([remaining_cols, pca_transformed])
+
+        else:
+            return pca_transformed
+
+    def inverse_transform(self, X):
+        if self.mask is not None:
+            inv_mask = np.arange(len(X[0])) >= sum(~self.mask)
+            inv_transformed = self.pca.inverse_transform(X[:, inv_mask])
+            inv_transformed_reorder = np.zeros([len(X), len(self.mask)])
+            inv_transformed_reorder[:, self.mask] = inv_transformed
+            inv_transformed_reorder[:, ~self.mask] = X[:, ~inv_mask]
+            return inv_transformed_reorder
+
+        else:
+            return self.pca.inverse_transform(X)
+
+
+gdal.UseExceptions()
+np.set_printoptions(precision=4, linewidth=120)
+warnings.simplefilter("ignore")
+
+parser = argparse.ArgumentParser()
+parser.add_argument("img")
+parser.add_argument("out")
+parser.add_argument("-probs")
+parser.add_argument("-feats")
+parser.add_argument("-modelload")
+parser.add_argument("-modelsave")
+parser.add_argument(
+    "-srcwin", nargs=4, metavar=("xoff", "yoff", "xsize", "ysize"), type=int
+)
+parser.add_argument("-nodata", type=str, default="0")
+parser.add_argument("-ninit", type=int, default=1)
+parser.add_argument("-ncomp", type=int, default=4)
+parser.add_argument("-verbose", type=int, default=0)
+parser.add_argument("-optimal", action="store_true")
+parser.add_argument("-warmstart", action="store_true")
+args = parser.parse_args()
+
+datatype = gdal.GDT_Float32
+npydtype = np.float32
+
+args.nodata = npydtype(args.nodata)
+print("nodata:", args.nodata)
+print("type:", type(args.nodata))
+
+
+def meta(path):
+    fd = gdal.Open(path)
+    return (fd.GetGeoTransform(), gd.GetProjection())
+
+
+if args.srcwin is not None:
+    xoff, yoff, xsize, ysize = args.srcwin
+    img = read(args.img, xoff, yoff, xsize, ysize, buf_type=datatype)
+else:
+    img = read(args.img, buf_type=datatype)
+
+img = np.transpose(img)
+
+if len(img.shape) == 2:
+    img = img.reshape(*img.shape, 1)
+
+nrows, ncols, nbands = img.shape
+print("img dims: {}".format(img.shape))
+
+with np.errstate(divide="ignore", invalid="ignore"):
+    kernels = []
+    for theta in range(4):
+        theta = theta / 4. * np.pi
+        for sigma in [1, 3]:
+            for frequency in [0.05, 0.15, 0.25]:
+                kernel = np.real(
+                    gabor_kernel(frequency, theta=theta, sigma_x=sigma, sigma_y=sigma)
+                )
+                desc = "gabor / theta: {} sigma: {} freq: {}".format(
+                    theta, sigma, frequency
+                )
+                kernels.append((desc, kernel))
+
+    bandpairs = list(combinations(range(nbands), 2))
+
+    nkernels = len(kernels)
+    nbandpairs = len(bandpairs)
+
+    if nbands > 2:
+        nfeatures = nbandpairs + nkernels + 3
+    else:
+        nfeatures = nkernels + 2
+
+    print("nfeatures: {}".format(nfeatures))
+    print()
+
+    data = np.empty((nrows, ncols, nfeatures), order="c", dtype=np.float32)
+
+    k = 0
+    if nbands == 1:  # panchromatic
+        bi = 0
+        print("F{:02d}: brightness (mean)".format(k))
+        data[:, :, k] = img[:, :, 0]
+        k = k + 1
+
+    else:
+        bi = k
+        print("F{:02d}: brightness (median)".format(k))
+        data[:, :, k] = np.nanmedian(img, axis=2)
+        k = k + 1
+
+        print("F{:02d}: brightness (mean)".format(k))
+        data[:, :, k] = np.nanmean(img, axis=2)
+        k = k + 1
+
+    print("F{:02d}: thresholding of F{:02d}".format(k, bi))
+    thresh = threshold_otsu(data[:, :, bi][np.isfinite(data[:, :, bi])])
+    data[:, :, k] = data[:, :, bi] > thresh
+    k = k + 1
+
+    bandpairindices = []
+    for (i, j) in bandpairs:
+        bandpairindices.append(k)
+        print("F{:02d}: (B{A}-B{B})/(B{A}+B{B})".format(k, A=i + 1, B=j + 1))
+        data[:, :, k] = (img[:, :, i] - img[:, :, j]) / (img[:, :, i] + img[:, :, j])
+        k = k + 1
+
+    textureindices = []
+    for desc, kernel in kernels:
+        textureindices.append(k)
+        print("F{:02d}: {}".format(k, desc))
+        texture = ndi.convolve(data[:, :, bi], kernel, mode="wrap")
+        data[:, :, k] = texture
+        k = k + 1
+
+if args.feats:
+    print("saving features")
+    write(np.transpose(data), args.feats, prototype=args.img)
+    sys.exit(0)
+
+datamask = np.logical_and(
+    (data != args.nodata).all(axis=2),
+    np.isfinite(data).all(axis=2)
+)
+
+gdata = data[datamask].reshape((-1, nfeatures))
+#gdata = gdata[np.isfinite(gdata).all(axis=1)]
+print("data shape:", data.shape)
+print("good shape:", gdata.shape)
+
+if args.modelload:
+    print("loading model from disk")
+    clf = joblib.load(args.modelload)
+else:
+    try:
+        if args.optimal:
+            cvs = ["spherical", "tied", "diag", "full"]
+            ks = range(int(np.sqrt(nfeatures)), nfeatures)
+        else:
+            cvs = ["full"]
+            ks = [args.ncomp]
+
+        lowest_bic = np.infty
+        for cv in cvs:
+            for k in ks:
+                print()
+                print("cv: {} k: {}".format(cv, k))
+
+                pipeline = []
+
+                pcamask = np.zeros(nfeatures, dtype=np.bool)
+
+                pcamask[textureindices] = True
+                if nbands > 3:
+                    pcamask[bandpairindices] = True
+
+                # pca = MaskedPCA(n_components=int(np.floor(np.sqrt(nfeatures))),
+                #                mask=pcamask,
+                #                svd_solver='randomized',
+                #                whiten=True)
+
+                pca = PCA(
+                    n_components=int(np.floor(np.sqrt(nfeatures))),
+                    svd_solver="randomized",
+                    whiten=True,
+                )
+
+                pipeline.append(("pca", pca))
+
+                texmask = np.zeros(nfeatures, dtype=np.bool)
+                texmask[textureindices] = True
+
+                gmm = GaussianMixture(
+                    n_components=k,
+                    covariance_type=cv,
+                    n_init=args.ninit,
+                    verbose=args.verbose,
+                    init_params="random",
+                )
+
+                pipeline.append(("gmm", gmm))
+
+                classifier = Pipeline(pipeline)
+
+                print("fitting {}".format(classifier))
+                classifier.fit(gdata)
+
+                bic = gmm.bic(pca.transform(gdata))
+                print("BIC: {}".format(bic))
+
+                if bic < lowest_bic:
+                    print("lowest!")
+                    lowest_bic = bic
+                    clf = classifier
+
+                print()
+
+    except KeyboardInterrupt:
+        print("Cancelling search and using current best")
+        clf = classifier
+
+print("Using model: {}".format(clf))
+
+if args.warmstart:
+    print("Warm starting the fit based on loaded model.")
+    clf.named_steps["gmm"].warm_start = True
+    clf.named_steps["gmm"].verbose = args.verbose
+    clf.fit(data[datamask].reshape((-1, nfeatures)))
+
+if args.modelsave:
+    print("dumping model to disk")
+    joblib.dump(clf, args.modelsave, compress=("xz", 0))
+
+print("classifying")
+
+labels = np.zeros((nrows, ncols), dtype=np.uint8)
+labels[datamask] = clf.predict(gdata)
+
+write(np.transpose(labels), args.out, prototype=args.img)
+
+if args.probs:
+    print("saving probabilities")
+    probs = clf.predict_proba(data[~datamask].reshape((-1, nfeatures)))
+    ncomp = probs.shape[1]
+    probas = np.zeros((nrows, ncols, ncomp), dtype=np.float32)
+    probas[~datamask] = probs
+    write(np.transpose(probas), args.probs, prototype=args.img)

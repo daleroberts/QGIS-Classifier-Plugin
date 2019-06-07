@@ -112,10 +112,7 @@ class ClassifyDialog(QDialog, Ui_ClassifyDialog):
         self.uAddButton.setEnabled(False)
         #re = QRegExp("\\d+\\.?\\d*(?:[Ee][+-]?\\d+)?")
         self.uLevelsList.setSortingEnabled(False)
-        self.uSelectedOnly.setChecked(False)
-        self.uSelectedOnly.setEnabled(False)
-        self.uUseGrid.setEnabled(False)
-        self.uSourceLayer.setFilters(QgsMapLayerProxyModel.PointLayer)
+        self.uSourceLayer.setFilters(QgsMapLayerProxyModel.RasterLayer)        
         self.uDataField.setExpressionDialogTitle(tr("Value to Classify"))
         self.uDataField.setFilters(QgsFieldProxyModel.Numeric)
         self.uNClassify.setMinimum(2)
@@ -124,7 +121,6 @@ class ClassifyDialog(QDialog, Ui_ClassifyDialog):
         self.uMinClassify.setEnabled(False)
         self.uSetMaximum.setChecked(False)
         self.uMaxClassify.setEnabled(False)
-        self.uLinesClassifys.setChecked(True)
         self.uExtend.setCurrentIndex(0)
         self.uExtend.setEnabled(False)
         self.progressBar.setValue(0)
@@ -145,10 +141,6 @@ class ClassifyDialog(QDialog, Ui_ClassifyDialog):
         #Signals
         self.uSourceLayer.layerChanged.connect(self.uSourceLayerChanged )
         self.uDataField.fieldChanged['QString'].connect(self.uDataFieldUpdate)
-        self.uSelectedOnly.toggled.connect(self.reloadData)
-        self.uUseGrid.toggled.connect(self._generator.setUseGrid)
-        self.uRemoveDuplicates.toggled.connect(self.reloadData)
-        self.uDuplicateTolerance.valueChanged[float].connect(self.reloadData)
         self.uClassifyInterval.valueChanged[float].connect(self.computeLevels)
         self.uSetMinimum.toggled[bool].connect(self.toggleSetMinimum)
         self.uSetMaximum.toggled[bool].connect(self.toggleSetMaximum)
@@ -163,14 +155,11 @@ class ClassifyDialog(QDialog, Ui_ClassifyDialog):
         self.uCloseButton.clicked.connect(self.closeDialog)
         self.uMethod.currentIndexChanged[int].connect(self.computeLevels)
         self.uMethod.currentIndexChanged[int].connect(self.enableClassifyParams)
-        self.uLinesClassifys.toggled[bool].connect(self.modeToggled)
-        self.uFilledClassifys.toggled[bool].connect(self.modeToggled)
-        self.uBoth.toggled[bool].connect(self.modeToggled)
         self.uLayerClassifys.toggled[bool].connect(self.modeToggled)
 
         # populate layer list
         if self.uSourceLayer.count() <= 0:
-            raise ClassifyError(tr("There are no point geometry layers suitable for Classifying"))
+            raise ClassifyError(tr("There are no layers suitable for classifying"))
         self.setupCurrentLayer( mapCanvas.currentLayer() )
         if self.uSourceLayer.currentIndex() < 0 and self.uSourceLayer.count()==1:
             self.uSourceLayer.setCurrentIndex(0)
@@ -247,21 +236,15 @@ class ClassifyDialog(QDialog, Ui_ClassifyDialog):
             attr = properties.get('SourceLayerAttr')
             self.uDataField.setField(attr)
             if FILLED in layerSet:
-                if LINES in layerSet:
-                    self.uBoth.setChecked(True)
-                else:
-                    self.uFilledClassifys.setChecked(True)
+                pass
             elif LAYERS in layerSet:
                     self.uLayerClassifys.setChecked(True)
-            else:
-                self.uLinesClassifys.setChecked(True)
             index = self.uMethod.findData(properties.get('Method'))
             if index >= 0:
                 self.uMethod.setCurrentIndex(index)
             index = self.uExtend.findData(properties.get('Extend'))
             if index >= 0:
                 self.uExtend.setCurrentIndex(index)
-            self.uExtend.setEnabled(self.uFilledClassifys.isChecked() or self.uBoth.isChecked())
             self.uPrecision.setValue(int(properties.get('LabelPrecision')))
             self.uTrimZeros.setChecked(properties.get('TrimZeros') == 'yes' )
             self.uLabelUnits.setText(properties.get('LabelUnits') or '')
@@ -297,19 +280,8 @@ class ClassifyDialog(QDialog, Ui_ClassifyDialog):
             return
         self._replaceLayerSet = None
         self._layer = layer
-        self.uLayerDescription.setText("")
         self.uDataField.setLayer(layer)
-        if layer is not None:
-            try:
-
-                # Get a default resolution for point thinning
-                extent=self._layer.extent()
-                self._loadingLayer=True
-                haveSelected=self._layer.selectedFeatureCount() > 0
-                self.uSelectedOnly.setChecked(haveSelected)
-                self.uSelectedOnly.setEnabled(haveSelected)
-            finally:
-                self._loadingLayer=False
+        self._loadingLayer=False
         self.enableOkButton()
 
     def uDataFieldUpdate(self, inputField):
@@ -334,17 +306,18 @@ class ClassifyDialog(QDialog, Ui_ClassifyDialog):
             if not self.uSetMaximum.isChecked():
                 self.uMaxClassify.setValue(zmax)
             gridded=self._generator.isGridded()
-            self.uUseGrid.setEnabled(gridded)
-            self.uUseGrid.setChecked(gridded)
-            self.uUseGridLabel.setEnabled(gridded)
+            # self.uUseGrid.setEnabled(gridded)
+            # self.uUseGrid.setChecked(gridded)
+            # self.uUseGridLabel.setEnabled(gridded)
             description=tr('Classifying {0} points').format(len(z))
             if gridshape is not None:
                 description=description+tr(' in a {0} x {1} grid').format(*gridshape)
             else:
                 description=description+' ('+tr('not in regular grid')+')'
-            self.uLayerDescription.setText(description)
+            #self.uLayerDescription.setText(description)
         else:
-            self.uLayerDescription.setText(tr("No data selected for Classifying"))
+            #self.uLayerDescription.setText(tr("No data selected for Classifying"))
+            pass
 
     def reloadData(self):
         if self._loadingLayer:
@@ -352,12 +325,8 @@ class ClassifyDialog(QDialog, Ui_ClassifyDialog):
         self._loadingLayer=True
         try:
             fids=None
-            if self._layer is not None and self.uSelectedOnly.isChecked():
-                fids=self._layer.selectedFeatureIds()
             self._generator.setDataSource( self._layer, self._zField, fids )
             duptol=0.0
-            if self.uRemoveDuplicates.isChecked():
-                duptol=self.uDuplicateTolerance.value()
             self._generator.setDuplicatePointTolerance(duptol)
             self.dataChanged()
         finally:
@@ -506,7 +475,6 @@ class ClassifyDialog(QDialog, Ui_ClassifyDialog):
 
     def modeToggled(self,enabled):
         if enabled:
-            self.uExtend.setEnabled(self.uFilledClassifys.isChecked() or self.uBoth.isChecked())
             self.enableOkButton()
 
     def enableOkButton(self):
@@ -542,10 +510,6 @@ class ClassifyDialog(QDialog, Ui_ClassifyDialog):
             try:
                 QApplication.setOverrideCursor(QCursor(Qt.WaitCursor))
                 self.setLabelFormat()
-                if self.uLinesClassifys.isChecked() or self.uBoth.isChecked():
-                    self.makeClassifyLayer(ClassifyType.line)
-                if self.uFilledClassifys.isChecked() or self.uBoth.isChecked():
-                    self.makeClassifyLayer(ClassifyType.filled)
                 if self.uLayerClassifys.isChecked():
                     self.makeClassifyLayer(ClassifyType.layer)
                 oldLayerSet = self.ClassifyLayerSet( replaceClassifyId )
@@ -570,7 +534,7 @@ class ClassifyDialog(QDialog, Ui_ClassifyDialog):
     def validate(self):
         message = None
         if self.uSourceLayer.currentLayer() is None:
-            message = tr("Please specify vector layer")
+            message = tr("Please specify raster layer")
         if (self.uDataField.currentText() == ""):
             message = tr("Please specify data field")
         if message != None:
@@ -578,7 +542,7 @@ class ClassifyDialog(QDialog, Ui_ClassifyDialog):
 
     def sourceLayers(self):
         for layer in list(QgsProject.instance().mapLayers().values()):
-            if (layer.type() == layer.VectorLayer) and (layer.geometryType() == QgsWkbTypes.PointGeometry):
+            if (layer.type() == layer.RasterLayer):
                 yield layer
 
     def getLevels(self):
@@ -655,7 +619,7 @@ class ClassifyDialog(QDialog, Ui_ClassifyDialog):
             layer.setCustomProperty('ClassifyPlugin.'+key, properties[key])
 
     def getClassifyProperties( self, layer ):
-        if layer.type() != layer.VectorLayer or layer.dataProvider().name() != "memory":
+        if layer.type() != layer.RasterLayer or layer.dataProvider().name() != "memory":
             return None
         properties = {}
         for key in [
@@ -771,18 +735,16 @@ class ClassifyDialog(QDialog, Ui_ClassifyDialog):
             if not self.uSetMaximum.isChecked():
                 self.uMaxClassify.setValue(zmax)
             gridded=self._generator.isGridded()
-            self.uUseGrid.setEnabled(gridded)
-            self.uUseGrid.setChecked(gridded)
-            self.uUseGridLabel.setEnabled(gridded)
             description='Classifying {0} points'.format(len(z))
             if gridded:
                 gridshape=self._generator.gridShape()
                 description=description+' in a {0} x {1} grid'.format(*gridshape)
             else:
                 description=description+' (not in regular grid)'
-            self.uLayerDescription.setText(description)
+#            self.uLayerDescription.setText(description)
         else:
-            self.uLayerDescription.setText(tr("No data selected for Classifying"))
+#            self.uLayerDescription.setText(tr("No data selected for Classifying"))
+            pass
 
     def setLabelFormat( self ):
         ndp=self.uPrecision.value()
@@ -842,8 +804,6 @@ class ClassifyDialog(QDialog, Ui_ClassifyDialog):
         settings=QSettings()
         base='/plugins/Classify/'
         mode=(LAYERS if self.uLayerClassifys.isChecked() else
-              BOTH if self.uBoth.isChecked() else
-              FILLED if self.uFilledClassifys.isChecked() else
               LINES)
         list=self.uLevelsList
         values=' '.join([list.item(i).text() for i in range(0, list.count())])
@@ -873,12 +833,6 @@ class ClassifyDialog(QDialog, Ui_ClassifyDialog):
             mode=settings.value(base+'mode')
             if mode==LAYERS:
                 self.uLayerClassifys.setChecked(True)
-            elif mode==BOTH:
-                self.uBoth.setChecked(True)
-            elif mode==FILLED:
-                self.uFilledClassifys.setChecked(True)
-            else:
-                self.uLinesClassifys.setChecked(True)
 
             levels=settings.value(base+'levels')
             if levels is not None and levels.isdigit():

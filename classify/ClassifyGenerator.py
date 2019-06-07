@@ -4,9 +4,9 @@ import re
 import sys
 import traceback
 from .DataGridder import DataGridder
-from . import ContourUtils
-from . import ContourMethod
-from .ContourMethod import ContourMethodError
+from . import ClassifyUtils
+from . import ClassifyMethod
+from .ClassifyMethod import ClassifyMethodError
 
 qgis_qhull_fails=platform.platform().startswith('Linux')
 
@@ -30,7 +30,7 @@ from PyQt5.QtCore import (
 _mplAvailable=False
 try:
     import numpy as np
-    from matplotlib.pyplot import contour, contourf, tricontour, tricontourf
+    #from matplotlib.pyplot import Classify, Classifyf, triClassify, triClassifyf
     from matplotlib.mlab import griddata
     from matplotlib.tri import Triangulation, TriAnalyzer
     _mplAvailable=True
@@ -41,19 +41,19 @@ except ImportError:
 def tr(string):
     return QCoreApplication.translate('Processing', string)
 
-class ContourError( RuntimeError ):
+class ClassifyError( RuntimeError ):
 
     def message(self):
         return self.args[0] if len(self.args) > 0 else "Exception"
 
-class ContourGenerationError( ContourError ):
+class ClassifyGenerationError( ClassifyError ):
 
     @staticmethod
     def fromException( excinfo ):
         message=traceback.format_exception_only(excinfo[0],excinfo[1])
-        return ContourGenerationError(message)
+        return ClassifyGenerationError(message)
 
-class ContourExtendOption:
+class ClassifyExtendOption:
 
     both='both'
     below='min'
@@ -65,28 +65,28 @@ class ContourExtendOption:
     _below=[both,below]
 
     _description={
-        both: tr('Fill below minimum and above maximum contour'),
-        below: tr('Fill below minimum contour'),
-        above: tr('Fill above maximum contour'),
-        neither: tr('Don\'t fill below or above maximum contour')
+        both: tr('Fill below minimum and above maximum Classify'),
+        below: tr('Fill below minimum Classify'),
+        above: tr('Fill above maximum Classify'),
+        neither: tr('Don\'t fill below or above maximum Classify')
         }
 
     def options():
-        return ContourExtendOption._options
+        return ClassifyExtendOption._options
 
     def valid( option ):
-        return option in ContourExtendOption._options
+        return option in ClassifyExtendOption._options
 
     def description( option ):
-        return ContourExtendOption._description.get(option,tr('Invalid contour option {0}').format(option))
+        return ClassifyExtendOption._description.get(option,tr('Invalid Classify option {0}').format(option))
 
     def extendBelow( option ):
-        return option in ContourExtendOption._below
+        return option in ClassifyExtendOption._below
 
     def extendAbove( option ):
-        return option in ContourExtendOption._above
+        return option in ClassifyExtendOption._above
 
-class ContourType:
+class ClassifyType:
     line='line'
     filled='filled'
     layer='layer'
@@ -94,9 +94,9 @@ class ContourType:
     _types=[line, filled, layer]
 
     _description={
-        line: tr('Contour lines'),
-        filled: tr('Filled contour polygons'),
-        layer: tr('Layer contour polygons')
+        line: tr('Classify lines'),
+        filled: tr('Filled Classify polygons'),
+        layer: tr('Layer Classify polygons')
         }
 
     _wkbtype={
@@ -106,16 +106,16 @@ class ContourType:
         }
 
     def types():
-        return ContourType._types
+        return ClassifyType._types
 
     def valid( type ):
-        return type in ContourType._types
+        return type in ClassifyType._types
 
     def description( type ):
-        return ContourType._description.get(type,tr('Invalid contour type {0}').format(type))
+        return ClassifyType._description.get(type,tr('Invalid Classify type {0}').format(type))
 
     def wkbtype( type ):
-        return ContourType._wkbtype.get(type)
+        return ClassifyType._wkbtype.get(type)
 
 class _DummyFeedback:
 
@@ -129,17 +129,17 @@ class _DummyFeedback:
         pass
 
     def reportError( self, message, fatal=False ):
-        raise ContourError( message )
+        raise ClassifyError( message )
 
-class ContourGenerator( QObject ):
+class ClassifyGenerator( QObject ):
 
-    MaxContours=100
+    MaxClassifys=100
     translateExtend=lambda self, x: {'none':'neither','below':'min','above':'max'}.get(x.lower(),x.lower())
 
 
     def __init__( self, source=None, zField=None, feedback=None ):
         '''
-        Initiallize the contour generator with source and field expression.
+        Initiallize the Classify generator with source and field expression.
         The initiallization will attempt to load the data.
 
         If feedback is supplied it should support:
@@ -149,7 +149,7 @@ class ContourGenerator( QObject ):
         '''
         QObject.__init__(self)
         if not _mplAvailable:
-            raise ContourError(tr("python matplotlib not available"))
+            raise ClassifyError(tr("python matplotlib not available"))
         self._x = None
         self._y = None
         self._z = None
@@ -164,11 +164,11 @@ class ContourGenerator( QObject ):
         self._gridShape = None
         self._gridOrder = None
         self._useGrid = True
-        self._contourMethod = None
-        self._contourMethodParams = None
+        self._ClassifyMethod = None
+        self._ClassifyMethodParams = None
         self._levels = None
-        self._contourType = ContourType.line
-        self._extendFilled = ContourExtendOption.both
+        self._ClassifyType = ClassifyType.line
+        self._extendFilled = ClassifyExtendOption.both
         self._labelNdp = -1
         self._defaultLabelNdp = None
         self._labelTrimZeros = False
@@ -209,24 +209,24 @@ class ContourGenerator( QObject ):
     def setUseGrid( self, usegrid ):
         self._useGrid=usegrid
 
-    def setContourLevels( self, levels ):
-        self.setContourMethod('manual',{'levels':levels})
+    def setClassifyLevels( self, levels ):
+        self.setClassifyMethod('manual',{'levels':levels})
 
-    def setContourMethod( self, method, params ):
-        self._contourMethod=method
-        self._contourMethodParams=params
+    def setClassifyMethod( self, method, params ):
+        self._ClassifyMethod=method
+        self._ClassifyMethodParams=params
         self._levels=None
 
-    def setContourType( self, contourType ):
-        contourType=contourType.lower()
-        if not ContourType.valid(contourType):
-            raise ContourError(tr("Invalid contour type {0}").format(contourType))
-        self._contourType=contourType
+    def setClassifyType( self, ClassifyType ):
+        ClassifyType=ClassifyType.lower()
+        if not ClassifyType.valid(ClassifyType):
+            raise ClassifyError(tr("Invalid Classify type {0}").format(ClassifyType))
+        self._ClassifyType=ClassifyType
 
-    def setContourExtendOption( self, extend ):
+    def setClassifyExtendOption( self, extend ):
         extend=extend.lower()
-        if not ContourExtendOption.valid(extend):
-            raise ContourError(tr("Invalid filled contour extend option {0}").format(extend))
+        if not ClassifyExtendOption.valid(extend):
+            raise ClassifyError(tr("Invalid filled Classify extend option {0}").format(extend))
         self._extendFilled=extend
 
     def setLabelFormat( self, ndp, trim=False, units='' ):
@@ -270,12 +270,12 @@ class ContourGenerator( QObject ):
                 zField='"'+zField.replace('"','""')+'"'
             expression=QgsExpression(zField)
             if expression.hasParserError():
-                raise ContourError(tr("Cannot parse")+" "+zField)
+                raise ClassifyError(tr("Cannot parse")+" "+zField)
             fields=source.fields()
             context=QgsExpressionContext()
             context.setFields(fields)
             if not expression.prepare(context):
-                raise ContourError(tr("Cannot evaluate value")+ " "+zField)
+                raise ClassifyError(tr("Cannot evaluate value")+ " "+zField)
             request = QgsFeatureRequest()
             request.setSubsetOfAttributes( expression.referencedColumns(),fields)
             if self._sourceFids is not None:
@@ -283,19 +283,19 @@ class ContourGenerator( QObject ):
             for current,feat in enumerate(source.getFeatures( request )):
                 try:
                     if feedback.isCanceled():
-                        raise ContourError('Cancelled by user')
+                        raise ClassifyError('Cancelled by user')
                     feedback.setProgress(int(current * percent))
                     context.setFeature(feat)
                     zval=expression.evaluate(context)
                     try:
                         zval=float(zval)
                     except ValueError:
-                        raise ContourError(tr("Z value {0} is not number")
+                        raise ClassifyError(tr("Z value {0} is not number")
                                                    .format(zval))
                     if zval is not None:
                         fgeom = feat.geometry()
                         if QgsWkbTypes.flatType(fgeom.wkbType()) != QgsWkbTypes.Point:
-                            raise ContourError(tr("Invalid geometry type for contouring - must be point geometry"))
+                            raise ClassifyError(tr("Invalid geometry type for Classifying - must be point geometry"))
                         geom=fgeom.asPoint()
                         x.append(geom.x())
                         y.append(geom.y())
@@ -310,7 +310,7 @@ class ContourGenerator( QObject ):
                 y=np.array(y)
                 z=np.array(z)
                 if discardTolerance > 0:
-                    index=ContourUtils.discardDuplicatePoints(
+                    index=ClassifyUtils.discardDuplicatePoints(
                         x,y,discardTolerance,self.crs().isGeographic())
                     npt1=len(index)
                     if npt1 < npt:
@@ -319,7 +319,7 @@ class ContourGenerator( QObject ):
                         z=z[index]
                         feedback.pushInfo(tr("{0} near duplicate points discarded - tolerance {1}")
                                           .format(npt-npt1,discardTolerance))
-        except ContourError as ce:
+        except ClassifyError as ce:
             feedback.reportError(ce.message())
             feedback.setProgress(0)
             return self._x,self._y,self._z
@@ -327,7 +327,7 @@ class ContourGenerator( QObject ):
             feedback.setProgress(0)
 
         if len(x) < 3:
-            feedback.reportError(tr("Too few points to contour"))
+            feedback.reportError(tr("Too few points to Classify"))
             return self._x, self._y, self._z
         self._x=x
         self._y=y
@@ -351,12 +351,12 @@ class ContourGenerator( QObject ):
         if self._levels is None:
             x,y,z = self.data()
             if z is None:
-                raise ContourError(tr("Contour data not defined"))
-            method=self._contourMethod
-            params=self._contourMethodParams
+                raise ClassifyError(tr("Classify data not defined"))
+            method=self._ClassifyMethod
+            params=self._ClassifyMethodParams
             if method is None:
-                raise ContourError(tr("Contouring method not defined"))
-            self._levels=ContourMethod.calculateLevels(z,method,**params)
+                raise ClassifyError(tr("Classifying method not defined"))
+            self._levels=ClassifyMethod.calculateLevels(z,method,**params)
             self._defaultLabelNdp = None
         return self._levels
 
@@ -364,7 +364,7 @@ class ContourGenerator( QObject ):
         return self._source.sourceCrs()
 
     def wkbtype( self ):
-        return ContourType.wkbtype(self._contourType)
+        return ClassifyType.wkbtype(self._ClassifyType)
 
     def zFieldName( self ):
         zfield=self._zFieldName or self._zField
@@ -381,7 +381,7 @@ class ContourGenerator( QObject ):
 
     def fields( self ):
         zFieldName=self.zFieldName()
-        if self._contourType == ContourType.filled:
+        if self._ClassifyType == ClassifyType.filled:
             fielddef= [('index',int),
                        (zFieldName+"_min",float),
                        (zFieldName+"_max",float),
@@ -401,17 +401,17 @@ class ContourGenerator( QObject ):
                 )
         return fields
 
-    def contourFeatures(self):
-        if self._contourType == ContourType.line:
-            return self.lineContourFeatures()
-        elif self._contourType == ContourType.filled:
-            return self.filledContourFeatures()
-        elif self._contourType == ContourType.layer:
-            return self.layerContourFeatures()
+    def ClassifyFeatures(self):
+        if self._ClassifyType == ClassifyType.line:
+            return self.lineClassifyFeatures()
+        elif self._ClassifyType == ClassifyType.filled:
+            return self.filledClassifyFeatures()
+        elif self._ClassifyType == ClassifyType.layer:
+            return self.layerClassifyFeatures()
         else:
             return []
 
-    def gridContourData(self):
+    def gridClassifyData(self):
         gx,gy,gz=self.data()
         order=self._gridOrder
         shape=self._gridShape
@@ -422,7 +422,7 @@ class ContourGenerator( QObject ):
         gx=gx.reshape(shape)
         gy=gy.reshape(shape)
         gz=gz.reshape(shape)
-        self._feedback.pushInfo("Contouring {0} by {1} grid"
+        self._feedback.pushInfo("Classifying {0} by {1} grid"
             .format(shape[0],shape[1]))
         return gx, gy, gz
 
@@ -435,8 +435,8 @@ class ContourGenerator( QObject ):
         import sys
         import subprocess
         import tempfile
-        tfh,tfname=tempfile.mkstemp('.npy','tmp_contour_generator')
-        tfh2,tfname2=tempfile.mkstemp('.npy','tmp_contour_generator')
+        tfh,tfname=tempfile.mkstemp('.npy','tmp_Classify_generator')
+        tfh2,tfname2=tempfile.mkstemp('.npy','tmp_Classify_generator')
         os.close(tfh)
         os.close(tfh2)
         trig=None
@@ -464,12 +464,12 @@ class ContourGenerator( QObject ):
         trig.set_mask(mask)
         return trig
 
-    def trigContourData(self):
+    def trigClassifyData(self):
         x,y,z=self.data()
         self._feedback.pushInfo("Triangulating {0} points"
             .format(len(x)))
         trig=self.buildTriangulation(x,y)
-        self._feedback.pushInfo("Contouring {0} triangles"
+        self._feedback.pushInfo("Classifying {0} triangles"
             .format(trig.triangles.shape[0]))
         return trig,z
         return polygons
@@ -479,7 +479,7 @@ class ContourGenerator( QObject ):
             return self._labelNdp
         if self._defaultLabelNdp is None:
             levels=self.levels()
-            ndp=ContourUtils.calcDefaultNdp(levels)
+            ndp=ClassifyUtils.calcDefaultNdp(levels)
             self._defaultLabelNdp = ndp
         return self._defaultLabelNdp
 
@@ -496,19 +496,19 @@ class ContourGenerator( QObject ):
     def _levelLabel(self,level):
         return self.formatLevel(level)+self._labelUnits
 
-    def lineContourFeatures(self):
+    def lineClassifyFeatures(self):
         x,y,z=self.data()
         levels = self.levels()
         usegrid=self.isGridded() and self._useGrid
         try:
             if usegrid:
-                gx,gy,gz=self.gridContourData()
-                cs = contour(gx, gy, gz, levels )
+                gx,gy,gz=self.gridClassifyData()
+                cs = Classify(gx, gy, gz, levels )
             else:
-                trig,z=self.trigContourData()
-                cs = tricontour(trig, z, levels )
+                trig,z=self.trigClassifyData()
+                cs = triClassify(trig, z, levels )
         except:
-            raise ContourGenerationError.fromException(sys.exc_info())
+            raise ClassifyGenerationError.fromException(sys.exc_info())
 
         fields = self.fields()
         zfield=self.zFieldName()
@@ -572,24 +572,24 @@ class ContourGenerator( QObject ):
             geom=geom.makeValid()
         return geom
 
-    def filledContourFeatures(self ):
+    def filledClassifyFeatures(self ):
         levels = self.levels()
         extend=self._extendFilled
         usegrid=self.isGridded() and self._useGrid
         try:
             if usegrid:
-                gx,gy,gz=self.gridContourData()
-                cs = contourf(gx, gy, gz, levels, extend=extend)
+                gx,gy,gz=self.gridClassifyData()
+                cs = Classifyf(gx, gy, gz, levels, extend=extend)
             else:
-                trig,z=self.trigContourData()
-                cs = tricontourf(trig, z, levels, extend=extend)
+                trig,z=self.trigClassifyData()
+                cs = triClassifyf(trig, z, levels, extend=extend)
         except:
-            raise ContourGenerationError.fromException(sys.exc_info())
+            raise ClassifyGenerationError.fromException(sys.exc_info())
 
         levels = [float(l) for l in cs.levels]
-        if ContourExtendOption.extendBelow(extend):
+        if ClassifyExtendOption.extendBelow(extend):
             levels = np.append([-np.inf,], levels)
-        if ContourExtendOption.extendAbove(extend):
+        if ClassifyExtendOption.extendAbove(extend):
             levels = np.append(levels, [np.inf,])
 
         fields = self.fields()
@@ -624,18 +624,18 @@ class ContourGenerator( QObject ):
                 self._feedback.reportError(sys.exc_info()[1])
 
         if ninvalid > 0:
-            self._feedback.pushInfo(tr('{0} invalid contour geometries discarded').format(ninvalid))
+            self._feedback.pushInfo(tr('{0} invalid Classify geometries discarded').format(ninvalid))
 
-    def layerContourFeatures(self):
+    def layerClassifyFeatures(self):
         levels = self.levels()
         usegrid=self.isGridded() and self._useGrid
         try:
             if usegrid:
-                gx,gy,gz=self.gridContourData()
+                gx,gy,gz=self.gridClassifyData()
             else:
-                trig,gz=self.trigContourData()
+                trig,gz=self.trigClassifyData()
         except:
-            raise ContourGenerationError.fromException(sys.exc_info())
+            raise ClassifyGenerationError.fromException(sys.exc_info())
 
         fields = self.fields()
         ninvalid=0
@@ -650,11 +650,11 @@ class ContourGenerator( QObject ):
                 continue
             try:
                 if usegrid:
-                    cs = contourf(gx, gy, gz, [level,zmax], extend=ContourExtendOption.neither)
+                    cs = Classifyf(gx, gy, gz, [level,zmax], extend=ClassifyExtendOption.neither)
                 else:
-                    cs = tricontourf(trig, gz, [level,zmax], extend=ContourExtendOption.neither)
+                    cs = triClassifyf(trig, gz, [level,zmax], extend=ClassifyExtendOption.neither)
             except:
-                raise ContourGenerationError.fromException(sys.exc_info())
+                raise ClassifyGenerationError.fromException(sys.exc_info())
             if len(cs.collections) < 1:
                 continue
             polygon=cs.collections[0]
@@ -677,5 +677,5 @@ class ContourGenerator( QObject ):
                 self._feedback.reportError(ex.message)
 
         if ninvalid > 0:
-            self._feedback.pushInfo(tr('{0} invalid contour geometries discarded').format(ninvalid))
+            self._feedback.pushInfo(tr('{0} invalid Classify geometries discarded').format(ninvalid))
 

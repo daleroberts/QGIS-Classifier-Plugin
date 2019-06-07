@@ -15,8 +15,8 @@
    id="svg2985"
    version="1.1"
    inkscape:version="0.48.3.1 r9886"
-   sodipodi:docname="contour.svg"
-   inkscape:export-filename="/home/ccrook/projects/qgis_plugins/QGIS2/contour/contour/contour.png"
+   sodipodi:docname="classify.svg"
+   inkscape:export-filename="classify.png"
    inkscape:export-xdpi="90"
    inkscape:export-ydpi="90">
   <defs
@@ -118,7 +118,7 @@
        id="path3087"
        inkscape:connector-curvature="0"
        sodipodi:nodetypes="zzzzzzzzzzzz"
-       inkscape:export-filename="/home/ccrook/projects/qgis_plugins/QGIS2/contour/contour/path3091.png"
+       inkscape:export-filename="/home/ccrook/projects/qgis_plugins/QGIS2/classify/classify/path3091.png"
        inkscape:export-xdpi="90"
        inkscape:export-ydpi="90" />
     <path
@@ -127,7 +127,7 @@
        id="path3089"
        inkscape:connector-curvature="0"
        sodipodi:nodetypes="zzzzzzzzzz"
-       inkscape:export-filename="/home/ccrook/projects/qgis_plugins/QGIS2/contour/contour/path3091.png"
+       inkscape:export-filename="/home/ccrook/projects/qgis_plugins/QGIS2/classify/classify/path3091.png"
        inkscape:export-xdpi="90"
        inkscape:export-ydpi="90" />
     <path

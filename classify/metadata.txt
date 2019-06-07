@@ -1,33 +1,27 @@
 # Plugin metadata
 
 [general]
-name=Contour plugin
+name=Classify plugin
 qgisMinimumVersion=3.0
-description=Generates contours from point layer
-version=2.0.6
+description=Classify imagery
+version=0.1
 
-about=Generate a contour layer based on an attribute of a point vector layer. 
-
- Builds a processing plugin and a GUI interface for simple direct contouring of point layers.
- The source point layer Can be either gridded or randomly organised. 
- The layer resulting contours can be rendered with a graduated renderer using a colour ramp. 
- The layer includes properties that can be used to replicate or modify the contouring parameters.
+about=Unsupervised classification of imagery.
 
  Requires python modules numpy and matplotlib
 
  Recommends loading the MemoryLayerSaver plugin to save the contours with the project
 
-author=Chris Crook, Lionel Roubeyrie
-email=ccrook@linz.govt.nz
-tracker=https://github.com/ccrook/QGIS-Contour-Plugin/issues
-repository=https:://github.com/ccrook/QGIS-Contour-Plugin
+author=Dale Roberts
+email=dale.o.roberts@gmail.com
+tracker=https://github.com/daleroberts/QGIS-Classify-Plugin/issues
+repository=https:://github.com/daleroberts/QGIS-Classify-Plugin
 
 # Non manadatory items
 
-tags=python, contour, processing
-homepage=https:://github.com/ccrook/QGIS-Contour-Plugin
-category=Vector
-icon=./images/contour.png
+tags=python, classification, processing
+homepage=https:://github.com/daleroberts/QGIS-Classify-Plugin
+category=Raster
+icon=./images/classify.png
 experimental=False
 deprecated=False
-

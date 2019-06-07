@@ -5,7 +5,7 @@ from collections import namedtuple
 
 # Need to use QObject.tr on method name, description
 
-class ContourMethodError( RuntimeError ):
+class ClassifyMethodError( RuntimeError ):
     def message(self):
         return self.args[0] if len(self.args)  > 0 else "Exception"
 
@@ -24,9 +24,9 @@ def _numberListParam( param, list ):
         try:
             v=float(v)
         except ValueError:
-            raise ContourMethodError(tr('Invalid value {0} in {1}').format(vs,param))
+            raise ClassifyMethodError(tr('Invalid value {0} in {1}').format(vs,param))
         if v0 is not None and v <= v0:
-            raise ContourMethodError(tr('Values not increasing in {0}').format(param))
+            raise ClassifyMethodError(tr('Values not increasing in {0}').format(param))
         values.append(v)
         v0=v
     return np.array(values)
@@ -35,7 +35,7 @@ def _paramValue( pt, param, value ):
     try:
         value=pt(value)
     except:
-        raise ContourMethodError(tr('Invalid value for contour {0} parameter: {1}')
+        raise ClassifyMethodError(tr('Invalid value for contour {0} parameter: {1}')
                     .format(param,value))
     return value
 
@@ -55,7 +55,7 @@ _paramtypes={
 
 def _evalParam(p,v):
     if p not in _paramtypes:
-        raise ContourMethodError(tr('Invalid contour method parameter {0}').format(p))
+        raise ClassifyMethodError(tr('Invalid contour method parameter {0}').format(p))
     return _paramtypes[p](p,v)
 
 def _sortedLevels(levels):
@@ -71,7 +71,7 @@ def _methodFunc(z,f,name,req,opt,kwa):
     kwv={}
     for k in req:
         if k not in kwa:
-            raise ContourMethodError(tr('Parameter {0} missing in {1}').format(k,name))
+            raise ClassifyMethodError(tr('Parameter {0} missing in {1}').format(k,name))
         pav.append(_evalParam(k,kwa[k]))
     for k in opt:
         v=kwa.get(k)
@@ -113,9 +113,9 @@ def calcEqualContours( z, ncontour, min=None, max=None ):
     'Equally spaced contours between min and max'
     zmin,zmax=_range(z,min,max)
     if zmax <= zmin:
-        raise ContourMethodError(tr('Invalid contour range - zmin=zmax'))
+        raise ClassifyMethodError(tr('Invalid contour range - zmin=zmax'))
     if ncontour < 1:
-        raise ContourMethodError(tr('Invalid number of contours - must be greater than 0'))
+        raise ClassifyMethodError(tr('Invalid number of contours - must be greater than 0'))
     return np.linspace(zmin,zmax,ncontour+1)
 
 @contourmethod('quantile','N quantiles')
@@ -126,9 +126,9 @@ def calcQuantileContours( z, ncontour, min=None, max=None ):
     if max is not None:
         z=z[z <= max]
     if len(z) < 2:
-        raise ContourMethodError(tr('Not enough z values to calculate quantiles'))
+        raise ClassifyMethodError(tr('Not enough z values to calculate quantiles'))
     if ncontour < 1:
-        raise ContourMethodError(tr('Invalid number of contours - must be greater than 0'))
+        raise ClassifyMethodError(tr('Invalid number of contours - must be greater than 0'))
     pcnt=np.linspace(0.0,100.0,ncontour+1)
     return np.percentile(z,pcnt)
     
@@ -138,12 +138,12 @@ def calcLogContours( z, ncontour, min=None, max=None, mantissa=[1,2,5] ):
     'Contours at up to n values 1, 2, 5 * 10^n between min and max'
     zmin,zmax=_range(z,min,max)
     if ncontour < 1:
-        raise ContourMethodError(tr('Invalid number of contours - must be greater than 0'))
+        raise ClassifyMethodError(tr('Invalid number of contours - must be greater than 0'))
     for m in mantissa:
         if m < 1.0 or m >= 10.0:
-            raise ContourMethodError(tr('Log contour mantissa must be between 1 and 10'))
+            raise ClassifyMethodError(tr('Log contour mantissa must be between 1 and 10'))
     if zmax <= 0:
-        raise ContourMethodError(tr('Cannot make log spaced contours on negative or 0 data'))
+        raise ClassifyMethodError(tr('Cannot make log spaced contours on negative or 0 data'))
     if zmin <= 0:
         zmin=zmax/(10**(math.ceil(float(ncontour)/len(mantissa))))
     exp0=int(math.floor(math.log10(zmin)))
@@ -172,7 +172,7 @@ def calcLogContours( z, ncontour, min=None, max=None, mantissa=[1,2,5] ):
 def calcIntervalContours( z, interval, offset=0.0,min=None, max=None, maxcontour=50):
     'Contours at specified spacing between min and max'
     if interval <= 0:
-        raise ContourMethodError(tr("Contour interval must be greater than zero"))
+        raise ClassifyMethodError(tr("Contour interval must be greater than zero"))
     zmin,zmax=_range(z,min,max)
     zmin -= offset
     zmax -= offset
@@ -182,7 +182,7 @@ def calcIntervalContours( z, interval, offset=0.0,min=None, max=None, maxcontour
         nmax += 1
     nmax += 1
     if nmax-nmin >= maxcontour:
-        raise ContourMethodError(tr("Number of contours ({0}) exceeds maximum allowed ({1})")
+        raise ClassifyMethodError(tr("Number of contours ({0}) exceeds maximum allowed ({1})")
                            .format(nmax-nmin,maxcontour))
     return np.arange(nmin,nmax)*interval+offset
 
@@ -202,4 +202,4 @@ def calculateLevels( z, method, **params ):
     m=getMethod(method)
     if m is not None:
         return m.calc(z,**params)
-    raise ContourMethodError("Invalid contouring method {0}".format(method))
+    raise ClassifyMethodError("Invalid contouring method {0}".format(method))

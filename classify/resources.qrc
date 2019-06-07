@@ -1,5 +1,5 @@
 <RCC>
-  <qresource prefix="plugins/contour/" >
-    <file>contour.png</file>
+  <qresource prefix="plugins/classify/" >
+    <file>classify.png</file>
   </qresource>
 </RCC>
