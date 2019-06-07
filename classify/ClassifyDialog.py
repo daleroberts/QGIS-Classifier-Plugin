@@ -121,7 +121,6 @@ class ClassifyDialog(QDialog, Ui_ClassifyDialog):
 
         self.uAddButton.setEnabled(False)
         # re = QRegExp("\\d+\\.?\\d*(?:[Ee][+-]?\\d+)?")
-        self.uLevelsList.setSortingEnabled(False)
         self.uSourceLayer.setFilters(QgsMapLayerProxyModel.RasterLayer)
         self.uNClassify.setMinimum(2)
         self.uNClassify.setValue(10)
@@ -148,21 +147,13 @@ class ClassifyDialog(QDialog, Ui_ClassifyDialog):
 
         # Signals
         self.uSourceLayer.layerChanged.connect(self.uSourceLayerChanged)
-        self.uClassifyInterval.valueChanged[float].connect(self.computeLevels)
         self.uSetMinimum.toggled[bool].connect(self.toggleSetMinimum)
         self.uSetMaximum.toggled[bool].connect(self.toggleSetMaximum)
-        self.uMinClassify.valueChanged[float].connect(self.computeLevels)
-        self.uMaxClassify.valueChanged[float].connect(self.computeLevels)
-        self.uNClassify.valueChanged[int].connect(self.computeLevels)
         self.uPrecision.valueChanged[int].connect(self.updatePrecision)
         self.uTrimZeros.toggled[bool].connect(self.updatePrecision)
-        self.uLevelsList.itemClicked[QListWidgetItem].connect(self.editLevel)
-        self.uHelpButton.clicked.connect(self.showHelp)
         self.uAddButton.clicked.connect(self.addClassifys)
         self.uCloseButton.clicked.connect(self.closeDialog)
-        self.uMethod.currentIndexChanged[int].connect(self.computeLevels)
         self.uMethod.currentIndexChanged[int].connect(self.enableClassifyParams)
-        self.uLayerClassifys.toggled[bool].connect(self.modeToggled)
 
         # populate layer list
         if self.uSourceLayer.count() <= 0:
@@ -212,7 +203,6 @@ class ClassifyDialog(QDialog, Ui_ClassifyDialog):
                 self.uMinClassify.setValue(np.min(z))
             if not self.uSetMaximum.isChecked():
                 self.uMaxClassify.setValue(np.max(z))
-            self.showLevels()
 
     def _getOptionalValue(self, properties, name, typefunc):
         fval = properties.get(name, "")
@@ -245,10 +235,13 @@ class ClassifyDialog(QDialog, Ui_ClassifyDialog):
         layerSet = self.ClassifyLayerSet(ClassifyId)
         try:
             attr = properties.get("SourceLayerAttr")
+<<<<<<< HEAD
             if FILLED in layerSet:
                 pass
             elif LAYERS in layerSet:
                 self.uLayerClassifys.setChecked(True)
+=======
+>>>>>>> More dialog tweaks
             index = self.uMethod.findData(properties.get("Method"))
             if index >= 0:
                 self.uMethod.setCurrentIndex(index)
@@ -275,9 +268,12 @@ class ClassifyDialog(QDialog, Ui_ClassifyDialog):
             ival = self._getOptionalValue(properties, "NClassify", int)
             if ival is not None:
                 self.uNClassify.setValue(ival)
+<<<<<<< HEAD
             self.uLevelsList.clear()
             for level in levels:
                 self.uLevelsList.addItem(level)
+=======
+>>>>>>> More dialog tweaks
             fval = self._getOptionalValue(properties, "Interval", float)
             if fval is not None:
                 self.uClassifyInterval.setValue(fval)
@@ -341,7 +337,6 @@ class ClassifyDialog(QDialog, Ui_ClassifyDialog):
         if not self._layer or not self._zField:
             self.enableOkButton()
             return
-        self.computeLevels()
         self.updateOutputName()
         self.enableOkButton()
 
@@ -352,6 +347,7 @@ class ClassifyDialog(QDialog, Ui_ClassifyDialog):
                 zf = "expr"
             self.uOutputName.setText("%s_%s" % (self._layer.name(), zf))
 
+<<<<<<< HEAD
     def editLevel(self, item=None):
         if not self._canEditList:
             return
@@ -401,6 +397,8 @@ class ClassifyDialog(QDialog, Ui_ClassifyDialog):
             self._generator.setClassifyLevels(fval)
             self.enableOkButton()
 
+=======
+>>>>>>> More dialog tweaks
     def getMethod(self):
         index = self.uMethod.currentIndex()
         methodid = self.uMethod.itemData(index)
@@ -416,8 +414,11 @@ class ClassifyDialog(QDialog, Ui_ClassifyDialog):
             zmin = self.uMinClassify.value()
         if self.uSetMaximum.isChecked():
             zmax = self.uMaxClassify.value()
+<<<<<<< HEAD
         list = self.uLevelsList
         levels = " ".join([list.item(i).text() for i in range(0, list.count())])
+=======
+>>>>>>> More dialog tweaks
         params = {
             "min": zmin,
             "max": zmax,
@@ -449,7 +450,6 @@ class ClassifyDialog(QDialog, Ui_ClassifyDialog):
             x, y, z = self._generator.data()
             if z is not None:
                 self.uMinClassify.setValue(np.min(z))
-                self.computeLevels()
 
     def toggleSetMaximum(self):
         self.uMaxClassify.setEnabled(self.uSetMaximum.isChecked())
@@ -457,8 +457,8 @@ class ClassifyDialog(QDialog, Ui_ClassifyDialog):
             x, y, z = self._generator.data()
             if z is not None:
                 self.uMaxClassify.setValue(np.max(z))
-                self.computeLevels()
 
+<<<<<<< HEAD
     def computeLevels(self):
         # Use ClassifyGenerator code
         methodcode, params = self.ClassifyLevelParams()
@@ -488,6 +488,8 @@ class ClassifyDialog(QDialog, Ui_ClassifyDialog):
         for i in range(0, len(levels)):
             self.uLevelsList.addItem(self.formatLevel(levels[i]))
 
+=======
+>>>>>>> More dialog tweaks
     def modeToggled(self, enabled):
         if enabled:
             self.enableOkButton()
@@ -536,8 +538,13 @@ class ClassifyDialog(QDialog, Ui_ClassifyDialog):
             try:
                 QApplication.setOverrideCursor(QCursor(Qt.WaitCursor))
                 self.setLabelFormat()
+<<<<<<< HEAD
                 if self.uLayerClassifys.isChecked():
                     self.makeClassifyLayer(ClassifyType.layer)
+=======
+                ## ?
+                self.makeClassifyLayer(ClassifyType.layer)
+>>>>>>> More dialog tweaks
                 oldLayerSet = self.ClassifyLayerSet(replaceClassifyId)
                 if oldLayerSet:
                     for layer in list(oldLayerSet.values()):
@@ -575,8 +582,8 @@ class ClassifyDialog(QDialog, Ui_ClassifyDialog):
                 yield layer
 
     def getLevels(self):
-        list = self.uLevelsList
-        return [float(list.item(i).text()) for i in range(0, list.count())]
+        ##?
+        return [0,1]
 
     def clearLayer(self, layer):
         pl = layer.dataProvider()
@@ -842,9 +849,14 @@ class ClassifyDialog(QDialog, Ui_ClassifyDialog):
     def saveSettings(self):
         settings = QSettings()
         base = "/plugins/Classify/"
+<<<<<<< HEAD
         mode = LAYERS if self.uLayerClassifys.isChecked() else LINES
         list = self.uLevelsList
         values = " ".join([list.item(i).text() for i in range(0, list.count())])
+=======
+        mode = LAYERS
+        values = "0 1"
+>>>>>>> More dialog tweaks
         settings.setValue(base + "mode", mode)
         settings.setValue(base + "levels", str(self.uNClassify.value()))
         settings.setValue(base + "values", values)
@@ -884,19 +896,25 @@ class ClassifyDialog(QDialog, Ui_ClassifyDialog):
         settings = QSettings()
         base = "/plugins/Classify/"
         try:
+<<<<<<< HEAD
             mode = settings.value(base + "mode")
             if mode == LAYERS:
                 self.uLayerClassifys.setChecked(True)
 
+=======
+>>>>>>> More dialog tweaks
             levels = settings.value(base + "levels")
             if levels is not None and levels.isdigit():
                 self.uNClassify.setValue(int(levels))
 
             values = settings.value(base + "values")
+<<<<<<< HEAD
             if values is not None:
                 self.uLevelsList.clear()
                 for value in values.split():
                     self.uLevelsList.addItem(value)
+=======
+>>>>>>> More dialog tweaks
 
             setmin = settings.value(base + "setmin") == "yes"
             self.uSetMinimum.setChecked(setmin)
