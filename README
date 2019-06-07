@@ -1,0 +1,6 @@
+Classify plugin for QGIS.
+
+Zip the contents of the classify directory to create the plugin, i.e.
+
+zip -r classify classify
+

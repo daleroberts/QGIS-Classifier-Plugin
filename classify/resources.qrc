@@ -1,0 +1,5 @@
+<RCC>
+  <qresource prefix="plugins/contour/" >
+    <file>contour.png</file>
+  </qresource>
+</RCC>
