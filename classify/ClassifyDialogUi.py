@@ -46,7 +46,6 @@ class Ui_ClassifyDialog(object):
         self.groupBox.setObjectName("groupBox")
         self.gridLayout_2 = QtWidgets.QGridLayout(self.groupBox)
         self.gridLayout_2.setObjectName("gridLayout_2")
-<<<<<<< HEAD
         self.horizontalLayout_7 = QtWidgets.QHBoxLayout()
         self.horizontalLayout_7.setObjectName("horizontalLayout_7")
         self.uBoth = QtWidgets.QRadioButton(self.groupBox)
@@ -88,17 +87,6 @@ class Ui_ClassifyDialog(object):
         self.uExtend.setSizePolicy(sizePolicy)
         self.uExtend.setObjectName("uExtend")
         self.gridLayout_2.addWidget(self.uExtend, 8, 1, 1, 1)
-=======
-        self.label_6 = QtWidgets.QLabel(self.groupBox)
-        self.label_6.setObjectName("label_6")
-        self.gridLayout_2.addWidget(self.label_6, 4, 0, 1, 1)
-        self.label_7 = QtWidgets.QLabel(self.groupBox)
-        self.label_7.setObjectName("label_7")
-        self.gridLayout_2.addWidget(self.label_7, 0, 0, 1, 1)
-        self.label_15 = QtWidgets.QLabel(self.groupBox)
-        self.label_15.setObjectName("label_15")
-        self.gridLayout_2.addWidget(self.label_15, 1, 0, 1, 1)
->>>>>>> More dialog tweaks
         self.horizontalLayout_6 = QtWidgets.QHBoxLayout()
         self.horizontalLayout_6.setContentsMargins(-1, 0, -1, -1)
         self.horizontalLayout_6.setObjectName("horizontalLayout_6")
@@ -300,13 +288,9 @@ class Ui_ClassifyDialog(object):
 
         self.retranslateUi(ClassifyDialog)
         QtCore.QMetaObject.connectSlotsByName(ClassifyDialog)
-<<<<<<< HEAD
         ClassifyDialog.setTabOrder(self.uSourceLayer, self.uBoth)
         ClassifyDialog.setTabOrder(self.uBoth, self.uLayerClassifys)
         ClassifyDialog.setTabOrder(self.uLayerClassifys, self.uMethod)
-=======
-        ClassifyDialog.setTabOrder(self.uSourceLayer, self.uMethod)
->>>>>>> More dialog tweaks
         ClassifyDialog.setTabOrder(self.uMethod, self.uClassifyInterval)
         ClassifyDialog.setTabOrder(self.uClassifyInterval, self.uNClassify)
         ClassifyDialog.setTabOrder(self.uNClassify, self.uSetMinimum)
@@ -330,17 +314,8 @@ class Ui_ClassifyDialog(object):
         self.groupBox_2.setTitle(_translate("ClassifyDialog", "Input"))
         self.label_3.setText(_translate("ClassifyDialog", "Raster layer"))
         self.groupBox.setTitle(_translate("ClassifyDialog", "Settings"))
-<<<<<<< HEAD
         self.uBoth.setText(_translate("ClassifyDialog", "both"))
         self.uLayerClassifys.setText(_translate("ClassifyDialog", "Classify layers"))
-=======
-        self.label_6.setText(_translate("ClassifyDialog", "Maximum"))
-        self.label_7.setText(_translate("ClassifyDialog", "Method"))
-        self.label_15.setText(_translate("ClassifyDialog", "Interval"))
-        self.uSetMaximum.setText(_translate("ClassifyDialog", "Set"))
-        self.label_10.setText(_translate("ClassifyDialog", "Extend"))
-        self.uNClassify.setStatusTip(_translate("ClassifyDialog", "Number of levels between min and max value (from data field)"))
->>>>>>> More dialog tweaks
         self.label_5.setText(_translate("ClassifyDialog", "Minimum"))
         self.label.setText(_translate("ClassifyDialog", "Number"))
         self.uSetMinimum.setText(_translate("ClassifyDialog", "Set"))
